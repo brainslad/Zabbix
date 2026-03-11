@@ -1,0 +1,424 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 846977d1dfed4968bc5f8bdb363285bc
+      name: 'Templates/Operating systems'
+  templates:
+    - uuid: ffc4c05aeecd4f6a86fcd498a29fd156
+      template: 'Windows TCP Connections'
+      name: 'Windows TCP Connections Monitoring'
+      description: |
+        Template for monitoring TCP connections on Windows Server 2019 using Zabbix Agent.
+        
+        REQUIREMENTS:
+        - Zabbix Agent 2 installed on Windows Server 2019
+        - Add the following line to zabbix_agent2.conf:
+            AllowKey=system.run[*]
+        - Or for Zabbix Agent (classic) add to zabbix_agentd.conf:
+            EnableRemoteCommands=1
+        
+        ITEMS INCLUDED:
+        - TCP connection counts by state (ESTABLISHED, TIME_WAIT, CLOSE_WAIT, LISTEN, SYN_SENT, SYN_RCVD, FIN_WAIT1, FIN_WAIT2, CLOSING, LAST_ACK)
+        - TCP Performance Counters (connections established, failures, resets, segments)
+      groups:
+        - name: 'Templates/Operating systems'
+      items:
+        - uuid: 3917e5c82c6f4cb79ef8f28e39846a48
+          name: 'TCP: Connection Failures per second'
+          key: 'perf_counter_en["\TCPv4\Connection Failures",60]'
+          delay: 60s
+          history: 30d
+          value_type: FLOAT
+          description: 'Number of times TCP connections have made a direct transition to the CLOSED state from SYN-SENT or SYN-RCVD state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: source
+              value: perfcounter
+          triggers:
+            - uuid: cb7f54a480094079b97093aa7bca6d4d
+              expression: 'avg(/Windows TCP Connections/perf_counter_en["\TCPv4\Connection Failures",60],5m)>10'
+              name: 'TCP: High connection failure rate (>10/s avg 5m) on {HOST.NAME}'
+              priority: WARNING
+              description: 'The TCP connection failure rate exceeds 10 per second (5-minute average). This may indicate network issues or application problems.'
+              tags:
+                - tag: component
+                  value: tcp
+        - uuid: 368c5a537eb342148b1bd8a6faf8d02e
+          name: 'TCP: Active Established Connections (PerfCounter)'
+          key: 'perf_counter_en["\TCPv4\Connections Established",60]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections for which the current state is either ESTABLISHED or CLOSE-WAIT (Windows Performance Counter).'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: source
+              value: perfcounter
+        - uuid: 77dffcf9667b458b97823eec35516ed8
+          name: 'TCP: Connections Reset per second'
+          key: 'perf_counter_en["\TCPv4\Connections Reset",60]'
+          delay: 60s
+          history: 30d
+          value_type: FLOAT
+          description: 'Number of times TCP connections have made a direct transition to the CLOSED state from ESTABLISHED or CLOSE-WAIT state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: source
+              value: perfcounter
+          triggers:
+            - uuid: 43fdb6183b4442c982061da3b52dd1bd
+              expression: 'avg(/Windows TCP Connections/perf_counter_en["\TCPv4\Connections Reset",60],5m)>50'
+              name: 'TCP: High connection reset rate (>50/s avg 5m) on {HOST.NAME}'
+              priority: WARNING
+              description: 'TCP connection reset rate exceeds 50 per second (5-minute average). May indicate application issues or network instability.'
+              tags:
+                - tag: component
+                  value: tcp
+        - uuid: d2c5fb92c7294946b11ccfdb0f0a2200
+          name: 'TCP: Segments Received per second'
+          key: 'perf_counter_en["\TCPv4\Segments Received/sec",60]'
+          delay: 60s
+          history: 30d
+          value_type: FLOAT
+          description: 'Rate at which segments are received, including those received in error.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: source
+              value: perfcounter
+        - uuid: b744c2e0d1f749a08346b1bf1f078af6
+          name: 'TCP: Segments Retransmitted per second'
+          key: 'perf_counter_en["\TCPv4\Segments Retransmitted/sec",60]'
+          delay: 60s
+          history: 30d
+          value_type: FLOAT
+          description: 'Rate at which segments are retransmitted.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: source
+              value: perfcounter
+          triggers:
+            - uuid: 3e5436275f4142288d0527f20ac2d4b5
+              expression: 'avg(/Windows TCP Connections/perf_counter_en["\TCPv4\Segments Retransmitted/sec",60],5m)>50'
+              name: 'TCP: High segment retransmission rate (>50/s avg 5m) on {HOST.NAME}'
+              priority: WARNING
+              description: 'TCP segment retransmission rate exceeds 50 per second (5-minute average). May indicate network packet loss or congestion.'
+              tags:
+                - tag: component
+                  value: tcp
+        - uuid: 0c4a2226a7fa49ddba328c1ac0b873e4
+          name: 'TCP: Segments Sent per second'
+          key: 'perf_counter_en["\TCPv4\Segments Sent/sec",60]'
+          delay: 60s
+          history: 30d
+          value_type: FLOAT
+          description: 'Rate at which segments are sent, excluding those containing only retransmitted bytes.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: source
+              value: perfcounter
+        - uuid: ff1786ac59f944ee908e3d47c299ca19
+          name: 'TCP: Total Connections (all states)'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Total number of TCP connections across all states.'
+          tags:
+            - tag: component
+              value: tcp
+        - uuid: a3d31d4a4dbd4625a518c0a566cd5881
+          name: 'TCP: Connections in CLOSE_WAIT state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State CloseWait -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in CLOSE_WAIT state. High values may indicate application not properly closing connections.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: CLOSE_WAIT
+          triggers:
+            - uuid: 26fe5993858d41b29a882bea191d7010
+              expression: 'last(/Windows TCP Connections/system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State CloseWait -ErrorAction SilentlyContinue | Measure-Object).Count"])>100'
+              name: 'TCP: High number of CLOSE_WAIT connections (>100) on {HOST.NAME}'
+              priority: WARNING
+              description: 'The number of TCP CLOSE_WAIT connections exceeds 100. Usually means the application is not properly closing connections.'
+              tags:
+                - tag: component
+                  value: tcp
+        - uuid: e25cf87078d5445191239e054291aa9d
+          name: 'TCP: Connections in CLOSING state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Closing -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in CLOSING state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: CLOSING
+        - uuid: 6080df5009d3448cb80f18151e37ed31
+          name: 'TCP: Connections in ESTABLISHED state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections currently in ESTABLISHED state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: ESTABLISHED
+          triggers:
+            - uuid: 79ca824d7bb84c3683c6416325073e89
+              expression: 'last(/Windows TCP Connections/system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Measure-Object).Count"])>5000'
+              name: 'TCP: Critical number of ESTABLISHED connections (>5000) on {HOST.NAME}'
+              priority: HIGH
+              description: 'The number of TCP ESTABLISHED connections exceeds 5000. Possible connection exhaustion or denial of service.'
+              tags:
+                - tag: component
+                  value: tcp
+            - uuid: 3b3caedee388432ca44e031dc5a81481
+              expression: 'last(/Windows TCP Connections/system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Measure-Object).Count"])>1000'
+              name: 'TCP: High number of ESTABLISHED connections (>1000) on {HOST.NAME}'
+              priority: WARNING
+              description: 'The number of TCP ESTABLISHED connections exceeds 1000. May indicate high load or a connection leak.'
+              tags:
+                - tag: component
+                  value: tcp
+        - uuid: 09db4675d4e845f497fe606129712a45
+          name: 'TCP: Connections in FIN_WAIT1 state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State FinWait1 -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in FIN_WAIT1 state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: FIN_WAIT1
+        - uuid: c3c476b866e445328518b6640072134a
+          name: 'TCP: Connections in FIN_WAIT2 state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State FinWait2 -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in FIN_WAIT2 state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: FIN_WAIT2
+        - uuid: 54a8f7cf6e1b43aea13777c4cc7eb666
+          name: 'TCP: Connections in LAST_ACK state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State LastAck -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in LAST_ACK state.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: LAST_ACK
+        - uuid: 9a7ff1b338da424d8c2977b205fb08b1
+          name: 'TCP: Connections in LISTEN state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP sockets currently listening for incoming connections.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: LISTEN
+        - uuid: a90f2e387a7d4a438752da723a419a1e
+          name: 'TCP: Connections in SYN_RECEIVED state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State SynReceived -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in SYN_RECEIVED state. Elevated counts may indicate a SYN flood attack.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: SYN_RECEIVED
+          triggers:
+            - uuid: 410894040c9940619fc8d624ba023e4d
+              expression: 'last(/Windows TCP Connections/system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State SynReceived -ErrorAction SilentlyContinue | Measure-Object).Count"])>100'
+              name: 'TCP: High number of SYN_RECEIVED connections (>100) on {HOST.NAME}'
+              priority: HIGH
+              description: 'The number of TCP SYN_RECEIVED connections exceeds 100. May indicate a SYN flood attack or network connectivity issues.'
+              tags:
+                - tag: component
+                  value: tcp
+        - uuid: d44ca63a64ee425298a0127d841a8e33
+          name: 'TCP: Connections in SYN_SENT state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State SynSent -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections currently initiating (SYN sent). High values may indicate connection issues or SYN floods.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: SYN_SENT
+        - uuid: 581800022e6e4f86830d564309bd7df0
+          name: 'TCP: Connections in TIME_WAIT state'
+          key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State TimeWait -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+          delay: 60s
+          history: 30d
+          description: 'Number of TCP connections in TIME_WAIT state. High values may indicate connection exhaustion or high traffic volume.'
+          tags:
+            - tag: component
+              value: tcp
+            - tag: state
+              value: TIME_WAIT
+          triggers:
+            - uuid: 4383f85b27614fe789111f66eb3e0d80
+              expression: 'last(/Windows TCP Connections/system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State TimeWait -ErrorAction SilentlyContinue | Measure-Object).Count"])>500'
+              name: 'TCP: High number of TIME_WAIT connections (>500) on {HOST.NAME}'
+              priority: WARNING
+              description: 'The number of TCP TIME_WAIT connections exceeds 500. May indicate high connection rate or ephemeral port exhaustion risk.'
+              tags:
+                - tag: component
+                  value: tcp
+      tags:
+        - tag: class
+          value: os
+        - tag: target
+          value: windows
+      dashboards:
+        - uuid: 544d1b62f51f47c78614ddd7c9880681
+          name: 'TCP Connection States'
+          pages:
+            - widgets:
+                - type: graph
+                  width: '72'
+                  height: '13'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'Windows TCP Connections'
+                        name: 'TCP: Connection States'
+                    - type: STRING
+                      name: reference
+                      value: LXDZA
+            - widgets:
+                - type: graph
+                  width: '72'
+                  height: '13'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'Windows TCP Connections'
+                        name: 'TCP: Connection Failures and Resets per second'
+                    - type: STRING
+                      name: reference
+                      value: GEKGG
+            - widgets:
+                - type: graph
+                  width: '72'
+                  height: '13'
+                  fields:
+                    - type: GRAPH
+                      name: graphid.0
+                      value:
+                        host: 'Windows TCP Connections'
+                        name: 'TCP: Segments per second (Sent / Received / Retransmitted)'
+                    - type: STRING
+                      name: reference
+                      value: DUUHQ
+  graphs:
+    - uuid: 200ceb2d06654953a9be8f5803ce9304
+      name: 'TCP: Connection Failures and Resets per second'
+      height: '300'
+      graph_items:
+        - color: FF0000
+          item:
+            host: 'Windows TCP Connections'
+            key: 'perf_counter_en["\TCPv4\Connection Failures",60]'
+        - sortorder: '1'
+          color: FF8800
+          item:
+            host: 'Windows TCP Connections'
+            key: 'perf_counter_en["\TCPv4\Connections Reset",60]'
+    - uuid: f667ec7fdcef4cb890e574595954ab4a
+      name: 'TCP: Connection States'
+      height: '300'
+      graph_items:
+        - color: 00CC00
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '1'
+          color: FF8800
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State TimeWait -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '2'
+          color: FF0000
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State CloseWait -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '3'
+          color: 0000CC
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '4'
+          color: AA00AA
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State SynSent -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '5'
+          color: CC8800
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State SynReceived -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '6'
+          color: 00AAAA
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State FinWait1 -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '7'
+          color: '008800'
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -State FinWait2 -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+        - sortorder: '8'
+          color: '888888'
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -ErrorAction SilentlyContinue | Measure-Object).Count"]'
+    - uuid: a9eb5f1bee7844e4a91d792119d8538c
+      name: 'TCP: Segments per second (Sent / Received / Retransmitted)'
+      height: '300'
+      graph_items:
+        - color: 00CC00
+          item:
+            host: 'Windows TCP Connections'
+            key: 'perf_counter_en["\TCPv4\Segments Sent/sec",60]'
+        - sortorder: '1'
+          color: 0000CC
+          item:
+            host: 'Windows TCP Connections'
+            key: 'perf_counter_en["\TCPv4\Segments Received/sec",60]'
+        - sortorder: '2'
+          color: FF0000
+          item:
+            host: 'Windows TCP Connections'
+            key: 'perf_counter_en["\TCPv4\Segments Retransmitted/sec",60]'
+    - uuid: c253db21866a4dad9ce3bb2032f2c803
+      name: 'TCP: Total Connections'
+      height: '300'
+      show_work_period: 'NO'
+      graph_items:
+        - drawtype: FILLED_REGION
+          color: 199C0D
+          item:
+            host: 'Windows TCP Connections'
+            key: 'system.run[powershell -NoProfile -NonInteractive -Command "(Get-NetTCPConnection -ErrorAction SilentlyContinue | Measure-Object).Count"]'
